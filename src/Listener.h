@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <memory>
 
+// 当前server的默认的port
 #define LISTENER_PORT		8080
 #define LISTENER_QUEUE_SIZE	10
 

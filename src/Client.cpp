@@ -9,6 +9,7 @@
 int main(int argc, char *argv[]) {
 
     std::string logdir = std::string("/var/log/cluster");
+	// 存放配置文件的位置，通过这里来标记本机的所有的ip网卡及本机的名称。
     std::string cfgdir = std::string("./cfg");
     std::string IP = std::string("127.0.0.1");
 

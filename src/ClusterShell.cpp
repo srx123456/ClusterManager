@@ -11,6 +11,7 @@ ClusterShell::~ClusterShell() {
 }
 
 int ClusterShell::Run() {
+	// 创建一个新线程运行running_in_another_thread函数，传入当前的ClusterShell对象作为参数
 	pthread_create(&tid, NULL, running_in_another_thread, (void*)this);
 	return 0;
 }
@@ -32,16 +33,20 @@ void *ClusterShell::running_in_another_thread(void *pArg) {
 
 }
 
+// 读取用户的输入的一级指令
 int ClusterShell::ReadUserCommand() {
 	std::string command;
 	ShellParser parser;
 	std::cout << "enter your command: ";
     std::getline(std::cin, command, '\n');
     if (command.length() > 0) {
+		// 读取用户使用shell真实执行的二级命令
 		if (command.compare("run") == 0) {
 			std::shared_ptr<Task> pTask(new Task);
+			// 使用shell输入框构造Task任务
 			parser.GetTask(pTask);
 			pClusterManager->AllocateNewTaskID(&pTask->taskID);
+			
 	    	if (pClusterManager->AddTask(pTask) != 0) {
 	    		std::cout << "unable to add task: there are no executors\n";
 	    	}

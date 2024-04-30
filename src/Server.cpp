@@ -7,6 +7,7 @@
 int main(int argc, char *argv[]) {
 	std::string logdir;
     logdir = std::string("/var/log/cluster");
+	// 这个位置存放的是server 还是client 的信息呢？
     std::string cfgdir;
     cfgdir = std::string("/etc/cluster");
 

@@ -9,22 +9,28 @@ Connection::Connection(int fdConnectionArg)
     pthread_create(&tid, NULL, refresh, (void*)this);
 }
 
+// 创建一个连接到指定server IP地址的套接字。
 Connection::Connection(const char *IP) {
     struct sockaddr_in addr;
 
     fdConnection = socket(AF_INET, SOCK_STREAM, 0);
 
     addr.sin_family = AF_INET;
+    // 配置了server的服务端口
     addr.sin_port = htons(LISTENER_PORT);
+    // 使用inet_pton函数将IP地址转换为网络字节序，并存储到addr结构体的sin_addr成员变量中。
     inet_pton(AF_INET, IP, &addr.sin_addr);
 
     if (connect(fdConnection, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
     	perror("connect");
     	exit(1);
     }
+    // 使用pthread_mutex_init函数初始化connectionMutex互斥锁。
     pthread_mutex_init(&connectionMutex, NULL);
+    // 获取当前时间，并将其保存在last_time变量中。
     last_time = time(NULL);
     status = OK;
+    // 使用pthread_create函数创建一个新线程，该线程调用refresh函数，并将当前对象的指针作为参数传递给该函数。
     pthread_create(&tid, NULL, refresh, (void*)this);
 }
 
@@ -127,6 +133,8 @@ int Connection::GetTask(std::shared_ptr<Task> &pTask) {
         pthread_mutex_unlock(&connectionMutex);
     	return -1;
     }
+    // 队列queue<std::shared_ptr<Task>> tasks;
+    // 取头元素，弹出头元素
     pTask = tasks.front();
     tasks.pop();
     pthread_mutex_unlock(&connectionMutex);
@@ -157,17 +165,23 @@ int Connection::GetInfo(std::shared_ptr<Info> &pInfo) {
     return 0;
 }
 
+// server发送client需要执行的任务
 int Connection::SendTask(std::shared_ptr<Task> pTask) {
     pthread_mutex_lock(&connectionMutex);
+    // 将一个Task对象序列化为XML格式，并将序列化后的内容存储到buf缓冲区中。
     SerializeTaskToBuf(pTask);
+    // 将buf缓冲区中的单个消息发送到套接字fdConnection。
     WriteSingleMessageFromBufToSocket();
     pthread_mutex_unlock(&connectionMutex);
     return 0;
 }
 
+// client发送任务的执行结果到server
 int Connection::SendReport(std::shared_ptr<Report> pReport) {
     pthread_mutex_lock(&connectionMutex);
+    // 将一个Task对象序列化为XML格式，并将序列化后的内容存储到buf缓冲区中。
     SerializeReportToBuf(pReport);
+    // 将buf缓冲区中的单个消息发送到套接字fdConnection。
     WriteSingleMessageFromBufToSocket();
     pthread_mutex_unlock(&connectionMutex);
     return 0;
@@ -187,25 +201,34 @@ int Connection::SendCheck() {
     return 0;
 }
 
+// 将一个Task对象序列化为XML格式，并将序列化后的内容存储到buf缓冲区中。
 int Connection::SerializeTaskToBuf(std::shared_ptr<Task> pTask) {
+    // 创建一个XMLDocument对象xmlMessage，用于构建XML文档。
     tinyxml2::XMLDocument xmlMessage;
+    // 创建一个根元素pRoot，并将其插入到xmlMessage中。
     tinyxml2::XMLElement *pRoot = xmlMessage.NewElement("root");
+    // 创建一个message元素pMessage，并设置其type属性为"task"，然后将其插入到pRoot中。
     tinyxml2::XMLElement *pMessage = xmlMessage.NewElement("message");
     pMessage->SetAttribute("type", "task");
+    // 创建name、arguments和taskID元素，并分别设置其文本内容为pTask对象的filename、args和taskID属性的值，然后将它们依次插入到pMessage中。
     tinyxml2::XMLElement *pName = xmlMessage.NewElement("name");
     tinyxml2::XMLElement *pArgs = xmlMessage.NewElement("arguments");
     tinyxml2::XMLElement *pReportID = xmlMessage.NewElement("taskID");
     pName->SetText(pTask->filename.c_str());
     pArgs->SetText(pTask->args.c_str());
     pReportID->SetText(pTask->taskID);
+    // 将pRoot插入到xmlMessage的首个子元素位置。
     pMessage->InsertFirstChild(pReportID);
     pMessage->InsertFirstChild(pArgs);
     pMessage->InsertFirstChild(pName);
     pRoot->InsertFirstChild(pMessage);
     xmlMessage.InsertFirstChild(pRoot);
+    // 创建一个XMLPrinter对象printer，用于将xmlMessage打印为字符串。
     tinyxml2::XMLPrinter printer;
     xmlMessage.Print(&printer);
+    // 将printer打印的字符串拷贝到buf缓冲区的偏移量为sizeof(int32_t)的位置。
     strcpy(buf + sizeof(int32_t), printer.CStr());
+    // 将printer打印的字符串的长度转换为网络字节序，并存储到buf缓冲区的前sizeof(int32_t)个字节中。
     *((int32_t*)buf) = htonl(strlen(printer.CStr()));
     return 0;
 }
@@ -224,24 +247,32 @@ int Connection::SerializeCheckToBuf() {
     return 0;
 }
 
-
+// 将一个Report对象序列化为XML格式，并将序列化后的内容存储到buf缓冲区中。
 int Connection::SerializeReportToBuf(std::shared_ptr<Report> pReport) {
+    // 创建一个XMLDocument对象xmlMessage，用于构建XML文档。
     tinyxml2::XMLDocument xmlMessage;
+    // 创建一个根元素pRoot，并将其插入到xmlMessage中。
     tinyxml2::XMLElement *pRoot = xmlMessage.NewElement("root");
+    // 创建一个message元素pMessage，并设置其type属性为"report"，然后将其插入到pRoot中。
     tinyxml2::XMLElement *pMessage = xmlMessage.NewElement("message");
+    // 创建report和taskID元素，并分别设置其文本内容为pReport对象的report和taskID属性的值，然后将它们依次插入到pMessage中。
     pMessage->SetAttribute("type", "report");
     tinyxml2::XMLElement *pText = xmlMessage.NewElement("report");
     tinyxml2::XMLElement *pReportID = xmlMessage.NewElement("taskID");
     pText->SetText(pReport->report.c_str());
     pReportID->SetText(pReport->taskID);
+    // 将pRoot插入到xmlMessage的首个子元素位置。
     pMessage->InsertFirstChild(pReportID);
     pMessage->InsertFirstChild(pText);
     pRoot->InsertFirstChild(pMessage);
     xmlMessage.InsertFirstChild(pRoot);
+    // 创建一个XMLPrinter对象printer，用于将xmlMessage打印为字符串。
     tinyxml2::XMLPrinter printer;
     xmlMessage.Print(&printer);
+    
     strcpy(buf, printer.CStr());
     strcpy(buf + sizeof(int32_t), printer.CStr());
+    // 将printer打印的字符串的长度转换为网络字节序，并存储到buf缓冲区的前sizeof(int32_t)个字节中。
     *((int32_t*)buf) = htonl(strlen(printer.CStr()));
     return 0;
 }
@@ -267,7 +298,9 @@ int Connection::SerializeInfoToBuf(std::shared_ptr<Info> pInfo) {
 	return 0;
 }
 
+// 将buf缓冲区中的单个消息发送到套接字fdConnection。
 int Connection::WriteSingleMessageFromBufToSocket() {
+    // 将消息的大小转换为网络字节序，并存储到buf缓冲区的前sizeof(int32_t)个字节中。
     int32_t size_of_message_plus_prefix;
     int32_t size_of_message;
     size_of_message = strlen(buf + sizeof(int32_t));
@@ -280,8 +313,8 @@ int Connection::WriteSingleMessageFromBufToSocket() {
     total_sent = 0;
     size_of_message_plus_prefix = size_of_message + sizeof(int32_t);
     
-
-
+    // 使用循环发送消息，直到所有字节都发送完毕。
+    // 在每次发送之前，阻塞SIGPIPE信号，以避免因为连接断开而导致的SIGPIPE信号中断程序。
     while (total_sent < size_of_message_plus_prefix) {
     	sigset_t sigset;
         sigemptyset(&sigset);
@@ -325,6 +358,7 @@ void *Connection::refresh(void *arg) {
 }
 
 int Connection::CheckStatus() {
+    // 使用pthread_mutex_lock函数对connectionMutex互斥锁进行加锁。
     pthread_mutex_lock(&connectionMutex);
     if (status == OK) {
         pthread_mutex_unlock(&connectionMutex);

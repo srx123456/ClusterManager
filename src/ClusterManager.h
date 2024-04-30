@@ -29,6 +29,7 @@ private:
 	int AllocateNewExecutorID(ID*);
 	
 	std::vector<std::shared_ptr<ConnectionManager>> connections;
+    
 	Listener listener;
 	std::shared_ptr<ClusterShell> shell;
 };

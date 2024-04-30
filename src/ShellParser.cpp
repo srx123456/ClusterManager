@@ -27,11 +27,13 @@ int ShellParser::GetArgs(std::shared_ptr<Task> pTask) {
 	return 0;
 }
 
+// 如果输入的节点ID < 0 则由系统自动选取一个负载最少的节点执行任务
 int ShellParser::GetNodeID(std::shared_ptr<Task> pTask) {
     std::string command;
     std::cout << "enter node ID: ";
 	std::getline(std::cin, command, '\n');
 	if (command.length() > 0) {
+        // 将字符串command转换为长整型数值（10进制）。
 	    pTask->executor = strtol(command.c_str(), NULL, 10);
 	    if (errno == ERANGE) {
 	    	pTask->executor = -1;

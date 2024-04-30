@@ -13,6 +13,7 @@ ConnectionManager::~ConnectionManager() {
 }
 
 int ConnectionManager::Run() {
+    // 创建一个新线程，执行running_in_another_thread方法，传入参数是ConnectionManager
     pthread_create(&tid, NULL, running_in_another_thread, (void*)this);
     return 0;
 }
@@ -33,21 +34,25 @@ void* ConnectionManager::running_in_another_thread(void* pArg) {
             std::shared_ptr<Task> pTask = This->waiting_tasks.front();
             This->waiting_tasks.pop();
             This->connection->SendTask(pTask);
+            // 把当前执行的任务压入running_tasks任务队列
             This->running_tasks.push(pTask);
         }
     	pthread_mutex_unlock(&This->tasksMutex);
         
+        // 获取任务执行后的结果
         std::shared_ptr<Report> report;
         while (This->connection->GetReport(report) == 0) {
             if (report->report.compare("finished") == 0) {
                 This->DeleteTask(report->taskID);
             }     
+            // 将report压入ClusterShell的reports队列
             This->pClusterManager->SendToShellReport(report);
         }
         sched_yield();
     }
 }
 
+// 注册新client信息
 int ConnectionManager::RegisterNode() {
     std::shared_ptr<Info> pInfo;
     while (true) {
@@ -73,12 +78,14 @@ int ConnectionManager::GetInfo(std::string &name_and_tasks) {
     buf << "hostname: " << hostname << std::endl;
     buf << "IP: " << IP << std::endl;
     pthread_mutex_lock(&tasksMutex);
+    // 等待执行的任务列表
     buf << "waiting_tasks:\n";
     int counter = 0;
     if (!waiting_tasks.empty()) {
         std::shared_ptr<Task> first;
         first = waiting_tasks.front();
         while (true) {
+            // 迭代逐个遍历输出
             std::shared_ptr<Task> current = waiting_tasks.front();
             waiting_tasks.pop();
             buf << current->taskID << ' ' << current->filename << std::endl;
@@ -113,9 +120,11 @@ int ConnectionManager::GetInfo(std::string &name_and_tasks) {
     return 0;
 }
 
+// 遍历running_tasks队列，并删除指定taskID的任务。
 int ConnectionManager::DeleteTask(int taskID) {
     pthread_mutex_lock(&tasksMutex);
     if (!running_tasks.empty()) {
+        // 标记，再次等于first时说明一次遍历结束
         std::shared_ptr<Task> first;
         first = running_tasks.front();
         while (true) {
@@ -158,6 +167,7 @@ int ConnectionManager::CloseConnection() {
     return 0;
 }
 
+// 总的待执行任务的数量
 int ConnectionManager::NumberOfTasks() {
     int result;
     pthread_mutex_lock(&tasksMutex);

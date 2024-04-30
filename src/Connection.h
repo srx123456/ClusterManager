@@ -68,6 +68,7 @@ private:
     
     std::queue<std::shared_ptr<Report>> reports;
     std::queue<std::shared_ptr<Task>> tasks;
+    // 
     std::queue<std::shared_ptr<Info>> info;
     std::queue<std::shared_ptr<Check>> checks;
 
