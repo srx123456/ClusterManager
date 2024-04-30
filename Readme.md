@@ -9,3 +9,5 @@ run and name of task ID of task will be shown. After entering command info list 
 tasks will appear on the screen. In addition IDs of completed tasks will be shown.
 
 shellParser实现的是任务的设置功能
+
+输入的节点小于0时，可以激活自带的负载均衡（简陋版）
