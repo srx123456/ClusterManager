@@ -13,6 +13,7 @@ set(Connection_LIB Connection.cpp)
 set(ClusterShell_LIB ClusterShell.cpp)
 set(Listener_LIB Listener.cpp)
 set(ShellParser_LIB ShellParser.cpp)
+set(AutoMapper_LIB AutoMapper.cpp)
 
 add_library(ClusterManager STATIC ${ClusterManager_LIB})
 add_library(tinyxml2 STATIC ${tinyxml2_LIB})
@@ -22,11 +23,12 @@ add_library(ClusterShell STATIC ${ClusterShell_LIB})
 add_library(Connection STATIC ${Connection_LIB})
 add_library(Listener STATIC ${Listener_LIB})
 add_library(ShellParser STATIC ${ShellParser_LIB})
+add_library(AutoMapper STATIC ${AutoMapper_LIB})
 
 target_link_libraries(Connection tinyxml2)
 
 add_executable(server ${SERVER_EXE})
 add_executable(client ${CLIENT_EXE})
 
-target_link_libraries(server ClusterManager tinyxml2 ConnectionManager Connection ClusterShell Listener pthread ShellParser)
+target_link_libraries(server ClusterManager tinyxml2 ConnectionManager Connection ClusterShell Listener pthread ShellParser AutoMapper)
 target_link_libraries(client ClientManager tinyxml2 Connection pthread)

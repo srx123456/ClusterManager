@@ -40,21 +40,27 @@ Connection::~Connection() {
     pthread_cancel(tid);
 }
 
+// 从套接字读取单个消息，并将消息的大小和内容存储到缓冲区中。
 int Connection::ReadSingleMessageFromSocketToBuf() {
+    // 对套接字进行轮询。
     pollfd struct_for_poll;
     struct_for_poll.fd = fdConnection;
+    // 设置轮询事件为 POLLIN，表示在套接字上有数据可读。
     struct_for_poll.events = POLLIN;
+    // 进行一次轮询，检查套接字上是否有数据可读。参数 1 表示要轮询的结构体数组的大小，0 表示不超时等待。
     poll(&struct_for_poll, 1, 0);
 
     if ((struct_for_poll.revents & POLLIN) == 0) {
     	return -1;
     }
 
+    // 用于记录已经接收到的字节数。
 	int32_t total_delivered;
     int32_t current_delivered;
-
+    // 初始化 total_delivered 为 0，定义变量 size_of_message 用于存储消息的大小。
     total_delivered = 0;
     int32_t size_of_message;
+    // 通过循环从套接字接收消息大小信息，确保接收完整的 int32_t 大小的消息长度信息。
     while (total_delivered < sizeof(int32_t)) {
         current_delivered = recv(fdConnection, (&size_of_message) + total_delivered,
         	sizeof(int32_t) - total_delivered, 0);
@@ -63,11 +69,11 @@ int Connection::ReadSingleMessageFromSocketToBuf() {
         }
         total_delivered += current_delivered;
     }
-    
+    // 接收到的消息大小信息从网络字节序转换为主机字节序。
     size_of_message = ntohl(size_of_message);
 
     total_delivered = 0;
-
+    // : 通过循环从套接字接收消息内容，确保接收完整的消息。
     while (total_delivered < size_of_message) {
     	current_delivered = recv(fdConnection, buf + total_delivered,
     		size_of_message - total_delivered, 0);
@@ -78,12 +84,18 @@ int Connection::ReadSingleMessageFromSocketToBuf() {
     return 0;
 }
 
+// 根据消息类型将从缓冲区中读取的 XML 消息解析为不同的数据结构，并将其存储到相应的队列中。
 int Connection::DeserializeStructuresFromBufToCorrQueue() {
+    // 创建一个 XML 文档对象 xmlMessage。
 	tinyxml2::XMLDocument xmlMessage;
+    // 将缓冲区中的数据解析为 XML 格式的消息，并存储到 xmlMessage 中。
     xmlMessage.Parse(buf);
+    // 获取 XML 消息中名为 "root" 的根元素。
     tinyxml2::XMLElement *pRoot = xmlMessage.FirstChildElement("root");
+    // 获取根元素下第一个名为 "message" 的子元素。
     tinyxml2::XMLElement *pElement = pRoot->FirstChildElement("message");
     while (pElement != NULL) {
+        // 获取当前 "message" 元素的 "type" 属性值，用于确定消息的类型。
         const char *type;
         type = pElement->Attribute("type");
         if (strcmp(type, "task") == 0) {
@@ -233,7 +245,9 @@ int Connection::SerializeTaskToBuf(std::shared_ptr<Task> pTask) {
     return 0;
 }
 
+// 将检查信息序列化到缓冲区中
 int Connection::SerializeCheckToBuf() {
+    //创建一个名为 xmlMessage 的 XML 文档对象
     tinyxml2::XMLDocument xmlMessage;
     tinyxml2::XMLElement *pRoot = xmlMessage.NewElement("root");
     tinyxml2::XMLElement *pMessage = xmlMessage.NewElement("message");
@@ -242,7 +256,9 @@ int Connection::SerializeCheckToBuf() {
     xmlMessage.InsertFirstChild(pRoot);
     tinyxml2::XMLPrinter printer;
     xmlMessage.Print(&printer);
+    // 将 XML 打印机中的字符串内容复制到缓冲区 buf 中，跳过 int32_t 类型的长度前缀。
     strcpy(buf + sizeof(int32_t), printer.CStr());
+    // 将 XML 字符串的长度（经过 strlen 函数计算得到）转换为网络字节序，并存储在缓冲区的开头，作为长度前缀。
     *((int32_t*)buf) = htonl(strlen(printer.CStr()));
     return 0;
 }
@@ -336,15 +352,19 @@ void *Connection::refresh(void *arg) {
     Connection *This = (Connection*)arg;
     while (true) {
         pthread_mutex_lock(&This->connectionMutex);
+        // 执行发送检查操作。
         This->SendCheck();
+        // 将所有数据从套接字转移到相应的队列中。
         This->DumpAllFromSocketToCorrespondingQueue();
         time_t curr_time = time(NULL);
+        // 当 checks 队列不为空时，遍历队列，更新 last_time 为队列中最新的时间。
         while (!This->checks.empty()) {
             if (This->last_time < This->checks.front()->t) {
                 This->last_time = This->checks.front()->t;
             }
             This->checks.pop();
         }
+        // 当前时间与 last_time 的差大于 BIG_DELAY，则将 status 设置为 FAILED，表示连接失败。
         if (curr_time - This->last_time > BIG_DELAY) {
             This->status = FAILED;
         }

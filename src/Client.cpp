@@ -16,7 +16,7 @@ int main(int argc, char *argv[]) {
     struct option long_options[] = {
         {"cfgdir", required_argument, 0, 'c'},
         {"logdir", required_argument, 0, 'l'},
-        {"help", no_argument, 0, 'h'},
+        {"help", no_argument, 0, 'h'}, 
         {"server", required_argument, 0, 's'},
         {0, 0, 0, 0}
     };

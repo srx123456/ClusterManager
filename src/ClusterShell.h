@@ -7,6 +7,7 @@ class ClusterShell;
 
 #include "ClusterManager.h"
 #include "ShellParser.h"
+#include "AutoMapper.h"
 
 #include <pthread.h>
 #include <iostream>
@@ -16,6 +17,7 @@ class ClusterShell;
 #include <queue>
 #include <sched.h>
 #include <stdlib.h>
+#include <vector>
 
 class ClusterShell {
 public:
