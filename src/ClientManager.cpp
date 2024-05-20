@@ -101,6 +101,7 @@ int ClientManager::Run(const char *serverIP) {
 }
 
 // client端 向 server端 注册
+// 注册时要同时上报自己当前的mem cpu 带宽信息状态
 int ClientManager::RegisterInCluster(const char *serverIP) {
 	connection = std::shared_ptr<Connection>(new Connection (serverIP));
     
